@@ -89,6 +89,23 @@ is left in place — remove it with `brew uninstall rtk` (macOS) or by deleting
 - **The managed `CLAUDE.md` block is loaded on every session,** so it costs input tokens for as long
   as it exists. It is kept to a handful of lines on purpose.
 
+## Troubleshooting
+
+**`cannot safely launch non-Node Windows command shim: ...\claude.CMD; install a native .exe`**
+
+`claude` installed via `npm i -g` or `pnpm add -g` on Windows resolves to a `claude.cmd` shim, not
+a real executable. Spawning a `.cmd` safely needs `cmd.exe /c` with `shell:true` — a known
+Windows arg-injection surface — so anything that launches a nested `claude` process (background
+agents, local-session spawning) refuses outright. `install.ps1` prints a warning when it detects
+this. Fix:
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+npm uninstall -g @anthropic-ai/claude-code    # and/or: pnpm remove -g @anthropic-ai/claude-code
+```
+
+Then confirm `Get-Command claude` resolves to `...\.local\bin\claude.exe`.
+
 ## Verifying
 
 The scripts honour `CLAUDE_CONFIG_DIR`, and `CLAUDE_SETUP_SRC` makes them read `styles/` and

@@ -33,6 +33,22 @@ $EndMark   = '<!-- END claude-setup -->'
 function Say  { param([string]$Message) Write-Host $Message }
 function Warn { param([string]$Message) Write-Warning $Message }
 
+# npm/pnpm install Claude Code as a claude.cmd shim on Windows. Node's
+# child_process can't spawn a .cmd/.bat safely (it needs cmd.exe /c with
+# shell:true — a known Windows arg-injection surface), so anything that
+# launches a nested `claude` process (background agents, local-session
+# spawning) refuses with "cannot safely launch non-Node Windows command
+# shim". The native installer ships a real claude.exe and sidesteps this
+# entirely, so just flag it — this repo doesn't touch how Claude Code itself
+# is installed.
+function Test-ClaudeShim {
+    $cmd = Get-Command claude -All -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $cmd -or $cmd.Source -notmatch '\.(cmd|bat|ps1)$') { return }
+    Warn "claude resolves to a Windows command shim ($($cmd.Source)), not a native .exe."
+    Warn "Nested/background Claude Code launches will fail with 'cannot safely launch non-Node Windows command shim'."
+    Warn "Fix: irm https://claude.ai/install.ps1 | iex, then 'npm uninstall -g @anthropic-ai/claude-code' (and/or 'pnpm remove -g @anthropic-ai/claude-code')."
+}
+
 # Fetch a repo-relative asset as text. CLAUDE_SETUP_SRC reads from a local checkout instead.
 function Get-Asset {
     param([Parameter(Mandatory)][string]$Path)
@@ -262,6 +278,7 @@ function Install-Rtk {
 
 Say "claude-setup -> $ClaudeDir"
 Say ''
+Test-ClaudeShim
 
 switch ($Component) {
     'caveman' { Install-Caveman }
